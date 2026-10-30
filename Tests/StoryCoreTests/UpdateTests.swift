@@ -155,6 +155,22 @@ final class UpdateTests: XCTestCase {
         XCTAssertEqual(PlayerVisibleProjection(changed).sensation, HealthProjection(changed).feeling)
         XCTAssertEqual(HealthProjection(changed).symptoms, "起身時頭暈。")
     }
+    func testLegacyHealthFallbackDoesNotBlockUnrelatedTurns() throws {
+        var legacy = GameSession(settings: CreationDraft())
+        legacy.world.condition.symptoms = "確診肝破裂"
+        var response = candidate(200)
+        var condition = legacy.world.condition
+        condition.knownTime = "午後"
+        response.proposedChanges = [.init(operation: .condition, physicalCondition: condition)]
+        let next = try RuleValidator.apply(response, to: legacy)
+        XCTAssertEqual(next.world.condition.symptoms, legacy.world.condition.symptoms)
+        XCTAssertEqual(next.world.condition.knownTime, "午後")
+        XCTAssertEqual(HealthProjection(next).symptoms, "尚無更多已記錄的主觀感受。")
+        XCTAssertThrowsError(try RuleValidator.apply(response, to: GameSession(settings: CreationDraft())))
+        condition.symptoms = "腹部隱隱作痛。"
+        response.proposedChanges = [.init(operation: .condition, physicalCondition: condition)]
+        XCTAssertEqual(try RuleValidator.apply(response, to: next).world.condition.symptoms, "腹部隱隱作痛。")
+    }
     func testBudgetsAreBoundedAndAccountForJSONAndOpening() {
         let range = NarrativeRange()
         XCTAssertGreaterThan(NarrativePolicy.outputBudget(range: range, model: "gpt-4.1-mini", opening: true), NarrativePolicy.outputBudget(range: range, model: "gpt-4.1-mini"))

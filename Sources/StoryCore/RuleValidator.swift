@@ -102,7 +102,13 @@ public enum RuleValidator {
         try guardText([projection.sensation, projection.symptoms, projection.location, projection.time].joined(separator: "\n"), session: result)
         for item in projection.inventory { try guardText(item.name + item.detail, session: result) }
         for entry in result.knowledge { try guardText(entry.title + entry.text + entry.source + entry.discoverability, session: result) }
-        guard HealthProjection.isSubjective(result.world.condition.sensation), HealthProjection.isSubjective(result.world.condition.symptoms), !result.world.condition.sensation.contains(where: \.isNumber), !result.world.condition.symptoms.localizedCaseInsensitiveContains("HP"),
+        // Previously accepted labels may need the new projection's fallback. Do not
+        // block unrelated turns for unchanged legacy text, or allow new unsafe labels.
+        let safeSensation = HealthProjection.isSubjective(result.world.condition.sensation)
+            || result.world.condition.sensation == original.world.condition.sensation
+        let safeSymptoms = HealthProjection.isSubjective(result.world.condition.symptoms)
+            || result.world.condition.symptoms == original.world.condition.symptoms
+        guard safeSensation, safeSymptoms, !result.world.condition.sensation.contains(where: \.isNumber), !result.world.condition.symptoms.localizedCaseInsensitiveContains("HP"),
               !result.world.condition.symptoms.contains("死亡時間") else { throw StoryError.invalid("健康資訊必須是主觀感受。") }
         // While unconscious, no externally sourced revelations or observations may be committed.
         if !original.world.condition.conscious && !result.world.condition.conscious {
