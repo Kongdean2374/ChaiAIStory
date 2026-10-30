@@ -13,6 +13,19 @@ final class UpdateTests: XCTestCase {
         text.choices = [VisibleText(String(repeating: "選", count: 999))]
         XCTAssertEqual(text.narrative.reduce(0) { $0 + NarrativePolicy.count($1.text) }, 200)
     }
+    func testReportedRiverSceneCountsOnlyBodyHan() throws {
+        let sample = """
+        你沒掏錢，只在棚邊站定：「船家幾時回來？過河要多少？」
+        婦人把碗疊進木盆，朝泥路望了一眼：「平日一人兩文。方才他說去村裡買米，沒說幾時回。你若急，我可不敢替他應承。」
+        她甩去手上水珠，又道：「沿這條路往西便是村子，莫往河邊岔路走。我再收拾一會兒，也要關棚了。」
+        河水拍著船舷，繫繩時鬆時緊。西邊泥路留著幾道積水的車轍，眼下不見有人走來；你可以等，也可以趁尚有天光去找。
+        """
+        XCTAssertEqual(NarrativePolicy.count(sample), 152)
+        let body = StoryTurnResponse(narrative: sample, choices: ["等待", "離開", "詢問"])
+        let report = try NarrativePolicy.validate(body, base: GameSession(settings: CreationDraft()))
+        XCTAssertEqual(report.actual, 152)
+        XCTAssertLessThan(report.actual, report.expected.preferred.lowerBound)
+    }
     func testRangeAndPreferredMiddle() throws {
         let base = GameSession(settings: CreationDraft())
         XCTAssertEqual(base.settings.effectiveNarrativeRange.preferred, 190...220)

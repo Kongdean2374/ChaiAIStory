@@ -130,7 +130,7 @@ struct Preferences: Codable {
         let price = preferences.pricingModel == attempt.model ? preferences.pricing : Pricing()
         let data = response.usage
         try store?.record(ApiUsage(id: ledgerID, attempt: attempt, input: data?.input_tokens, cached: data?.input_tokens_details?.cached_tokens,
-                                   output: data?.output_tokens, cost: data.flatMap { price.estimate(input: $0.input_tokens, cached: $0.input_tokens_details?.cached_tokens ?? 0, output: $0.output_tokens) }, note: data == nil ? "未知／可能計費" : "伺服器 usage；費用依本機價格估算"))
+                                   output: data?.output_tokens, cost: data.flatMap { price.estimate(input: $0.input_tokens, cached: $0.input_tokens_details?.cached_tokens ?? 0, output: $0.output_tokens) }, note: (ledgerID.hasSuffix("length-repair") ? "正文篇幅修正；" : "") + (data == nil ? "未知／可能計費" : "伺服器 usage；費用依本機價格估算")))
     }
     func generate(action: String, initial: Bool = false, memoryOnly: Bool = false, bypassBudget: Bool = false) {
         guard !busy, let store else { return }

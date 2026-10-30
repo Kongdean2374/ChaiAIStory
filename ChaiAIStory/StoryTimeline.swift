@@ -7,6 +7,7 @@ struct StoryTimeline: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var action = ""
     @State private var nearBottom = true
+    @State private var didInitialScroll = false
     @State private var showHealth = false
     @State private var showLocation = false
     @FocusState private var inputFocused: Bool
@@ -62,7 +63,7 @@ struct StoryTimeline: View {
                     .onPreferenceChange(BottomPosition.self) { nearBottom = $0 < viewport.size.height + 70 }
                     .onChange(of: model.turns.last?.id) { _, _ in if nearBottom { scrollToLatest(proxy) } }
                     .onChange(of: model.busy) { _, _ in if nearBottom { scrollToLatest(proxy) } }
-                    .onAppear { proxy.scrollTo("bottom", anchor: .bottom) }
+                    .onAppear { if !didInitialScroll { proxy.scrollTo("bottom", anchor: .bottom); didInitialScroll = true } }
                     .overlay(alignment: .bottomTrailing) {
                         if !nearBottom {
                             Button { scrollToLatest(proxy) } label: { Label("跳到最新", systemImage: "arrow.down").font(.caption) }
@@ -131,7 +132,7 @@ private struct StoryBubble: View {
     let text: String
     let isPlayer: Bool
     let availableWidth: CGFloat
-    @ScaledMetric(relativeTo: .body) private var fontSize: CGFloat
+    @ScaledMetric(relativeTo: .body) private var fontSize: CGFloat = 16
     init(text: String, isPlayer: Bool, size: Double, availableWidth: CGFloat) {
         self.text = text; self.isPlayer = isPlayer; self.availableWidth = availableWidth
         _fontSize = ScaledMetric(wrappedValue: CGFloat(size), relativeTo: .body)
