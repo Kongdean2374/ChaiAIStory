@@ -1,0 +1,35 @@
+// !$*UTF8*$!
+{archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+26DF37431206283357763132 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChaiAIStory/AppModel.swift"; sourceTree = "<group>"; };
+EDFF1B84EFF0D2B292BCFA91 = {isa = PBXBuildFile; fileRef = 26DF37431206283357763132; };
+FFC59FE59077B0DF54B8B8CC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChaiAIStory/ChaiAIStoryApp.swift"; sourceTree = "<group>"; };
+2F480F618D5652B72F960D25 = {isa = PBXBuildFile; fileRef = FFC59FE59077B0DF54B8B8CC; };
+3A601C5682D3855E17C96744 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChaiAIStory/CreationWizard.swift"; sourceTree = "<group>"; };
+EFE6E8F5FAE9FD9B2F7669CC = {isa = PBXBuildFile; fileRef = 3A601C5682D3855E17C96744; };
+3F10753DCE6D36846F835D61 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChaiAIStory/Keychain.swift"; sourceTree = "<group>"; };
+96D3B08E23A71E62DAA44FDE = {isa = PBXBuildFile; fileRef = 3F10753DCE6D36846F835D61; };
+97682D82AC872A909B97CD18 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChaiAIStory/LibraryViews.swift"; sourceTree = "<group>"; };
+A08097CEA4B3B9DEEDD5973A = {isa = PBXBuildFile; fileRef = 97682D82AC872A909B97CD18; };
+6A642AD8E7EF8D4C78FA4FE4 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChaiAIStory/SettingsView.swift"; sourceTree = "<group>"; };
+8BD74F3EF564DD47C3C0955F = {isa = PBXBuildFile; fileRef = 6A642AD8E7EF8D4C78FA4FE4; };
+78A1AABED04F6741F4817B45 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChaiAIStory/StoryTimeline.swift"; sourceTree = "<group>"; };
+E503F45880EF3E1B79240B4C = {isa = PBXBuildFile; fileRef = 78A1AABED04F6741F4817B45; };
+8BF729FFE074CAEE622C0292 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
+F2687002D4A70A82C8684105 = {isa = PBXBuildFile; fileRef = 8BF729FFE074CAEE622C0292; };
+A4CC6BC01A927E2A78FD3BEC = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+D0A5FA21083DD21639A08076 = {isa = PBXBuildFile; fileRef = A4CC6BC01A927E2A78FD3BEC; };
+A8792157CB4F27FB949C035F = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChaiAIStory.app; sourceTree = BUILT_PRODUCTS_DIR; };
+BC4A71180870F7945155FBB0 = {isa = XCLocalSwiftPackageReference; relativePath = "."; };
+F26350DAFE3F19AABFD69AC4 = {isa = XCSwiftPackageProductDependency; productName = StoryCore; };
+06A61DF042AD775E8BDD2766 = {isa = PBXBuildFile; productRef = F26350DAFE3F19AABFD69AC4; };
+878A52FC5FF6A57D50B7B870 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (EDFF1B84EFF0D2B292BCFA91,2F480F618D5652B72F960D25,EFE6E8F5FAE9FD9B2F7669CC,96D3B08E23A71E62DAA44FDE,A08097CEA4B3B9DEEDD5973A,8BD74F3EF564DD47C3C0955F,E503F45880EF3E1B79240B4C); runOnlyForDeploymentPostprocessing = 0; };
+41D311A605520FC7B8B9A980 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (F2687002D4A70A82C8684105,D0A5FA21083DD21639A08076); runOnlyForDeploymentPostprocessing = 0; };
+E2AA269EB967A8853A258BFA = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (06A61DF042AD775E8BDD2766); runOnlyForDeploymentPostprocessing = 0; };
+0A3E27B8CA818264D75C8D81 = {isa = PBXGroup; children = (A8792157CB4F27FB949C035F); name = Products; sourceTree = "<group>"; };
+AD936FCBED631FA67E05C3EA = {isa = PBXGroup; children = (26DF37431206283357763132,FFC59FE59077B0DF54B8B8CC,3A601C5682D3855E17C96744,3F10753DCE6D36846F835D61,97682D82AC872A909B97CD18,6A642AD8E7EF8D4C78FA4FE4,78A1AABED04F6741F4817B45,8BF729FFE074CAEE622C0292,A4CC6BC01A927E2A78FD3BEC,0A3E27B8CA818264D75C8D81); sourceTree = "<group>"; };
+1A03BD2FD107C453F3183E30 = {isa = XCBuildConfiguration; name = Debug; buildSettings = {SWIFT_VERSION = "5.0";IPHONEOS_DEPLOYMENT_TARGET = "17.0";SDKROOT = "iphoneos";CODE_SIGNING_ALLOWED = "NO";CODE_SIGNING_REQUIRED = "NO";CODE_SIGN_IDENTITY = "";ENABLE_USER_SCRIPT_SANDBOXING = "YES";CLANG_ENABLE_MODULES = "YES";TARGETED_DEVICE_FAMILY = "1";PRODUCT_BUNDLE_IDENTIFIER = "com.kongdean.ChaiAIStory";PRODUCT_NAME = "$(TARGET_NAME)";INFOPLIST_FILE = "Resources/Info.plist";ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon";GENERATE_INFOPLIST_FILE = "NO";MARKETING_VERSION = "1.0";CURRENT_PROJECT_VERSION = "1";LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";SWIFT_EMIT_LOC_STRINGS = "YES";SWIFT_OPTIMIZATION_LEVEL = "-Onone";DEBUG_INFORMATION_FORMAT = "dwarf";SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";ENABLE_TESTABILITY = "YES";}; };
+E020E3C67BD0C31227720BD8 = {isa = XCBuildConfiguration; name = Release; buildSettings = {SWIFT_VERSION = "5.0";IPHONEOS_DEPLOYMENT_TARGET = "17.0";SDKROOT = "iphoneos";CODE_SIGNING_ALLOWED = "NO";CODE_SIGNING_REQUIRED = "NO";CODE_SIGN_IDENTITY = "";ENABLE_USER_SCRIPT_SANDBOXING = "YES";CLANG_ENABLE_MODULES = "YES";TARGETED_DEVICE_FAMILY = "1";PRODUCT_BUNDLE_IDENTIFIER = "com.kongdean.ChaiAIStory";PRODUCT_NAME = "$(TARGET_NAME)";INFOPLIST_FILE = "Resources/Info.plist";ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon";GENERATE_INFOPLIST_FILE = "NO";MARKETING_VERSION = "1.0";CURRENT_PROJECT_VERSION = "1";LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";SWIFT_EMIT_LOC_STRINGS = "YES";SWIFT_OPTIMIZATION_LEVEL = "-O";DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";}; };
+86D70A8B0431CAF3048DAB39 = {isa = XCConfigurationList; buildConfigurations = (1A03BD2FD107C453F3183E30,E020E3C67BD0C31227720BD8); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+34A04005BCAF206EEC990BD9 = {isa = PBXNativeTarget; buildConfigurationList = 86D70A8B0431CAF3048DAB39; buildPhases = (878A52FC5FF6A57D50B7B870,E2AA269EB967A8853A258BFA,41D311A605520FC7B8B9A980); buildRules = (); dependencies = (); name = ChaiAIStory; packageProductDependencies = (F26350DAFE3F19AABFD69AC4); productName = ChaiAIStory; productReference = A8792157CB4F27FB949C035F; productType = "com.apple.product-type.application"; };
+244210E48437B6556980A702 = {isa = PBXProject; attributes = {LastUpgradeCheck = 1600; }; buildConfigurationList = 86D70A8B0431CAF3048DAB39; compatibilityVersion = "Xcode 14.0"; developmentRegion = "zh-Hant"; hasScannedForEncodings = 0; knownRegions = ("zh-Hant",en,Base); mainGroup = AD936FCBED631FA67E05C3EA; packageReferences = (BC4A71180870F7945155FBB0); productRefGroup = 0A3E27B8CA818264D75C8D81; projectDirPath = ""; projectRoot = ""; targets = (34A04005BCAF206EEC990BD9); };
+}; rootObject = 244210E48437B6556980A702; }

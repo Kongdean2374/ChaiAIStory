@@ -1,0 +1,69 @@
+name: Build unsigned iPhone IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: unsigned-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test-build-package:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Xcode and source revision
+        run: |
+          xcodebuild -version
+          echo "Source SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+      - name: Core safety and persistence tests
+        run: swift test --parallel
+      - name: Generate project and icon reproducibly
+        run: |
+          python3 Scripts/generate_project.py
+          python3 Scripts/generate_icon.py
+          git diff --exit-code -- ChaiAIStory.xcodeproj
+      - name: Compile native iPhone app without signing
+        run: |
+          set -o pipefail
+          xcodebuild -project ChaiAIStory.xcodeproj -scheme ChaiAIStory \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath DerivedData ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build \
+            2>&1 | tee "$RUNNER_TEMP/ChaiAIStory-build.log"
+      - name: Verify unsigned product and package IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="DerivedData/Build/Products/Release-iphoneos/ChaiAIStory.app"
+          test -f "$APP/ChaiAIStory"
+          test -f "$APP/Info.plist"
+          test -z "$(find "$APP" \( -name _CodeSignature -o -name '*.mobileprovision' -o -name '*.p12' \) -print)"
+          if codesign -dv "$APP" >"$RUNNER_TEMP/signature.txt" 2>&1; then
+            echo "Unexpected signed application"
+            exit 1
+          fi
+          lipo -verify_arch arm64 "$APP/ChaiAIStory"
+          mkdir -p staging/Payload output
+          cp -R "$APP" staging/Payload/
+          (cd staging && /usr/bin/zip -qry ../output/ChaiAIStory-Unsigned.ipa Payload)
+          unzip -t output/ChaiAIStory-Unsigned.ipa
+          python3 Scripts/validate_ipa.py output/ChaiAIStory-Unsigned.ipa
+          test "$(find output -type f | wc -l | tr -d ' ')" = 1
+          shasum -a 256 output/ChaiAIStory-Unsigned.ipa >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload only the single unsigned IPA
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ChaiAIStory-Unsigned
+          path: output/ChaiAIStory-Unsigned.ipa
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Failure summary
+        if: failure()
+        run: |
+          echo "Tests/build/IPA validation failed. No substitute IPA is uploaded. See failed step logs." >> "$GITHUB_STEP_SUMMARY"
