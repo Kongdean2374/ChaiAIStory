@@ -39,8 +39,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$SIM_ID" -derivedDataPath SimulatorData \
             ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build-for-testing
           for DEVICE in "$SIM_ID" "$SE_ID"; do
-            xcrun simctl boot "$DEVICE"
-            python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=240)' "$DEVICE"
+            python3 -c 'import subprocess,sys,time; start=time.monotonic(); subprocess.run(["xcrun","simctl","boot",sys.argv[1]],check=True,timeout=240); subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=max(1,240-(time.monotonic()-start)))' "$DEVICE"
             xcodebuild -project ChaiAIStory.xcodeproj -scheme ChaiAIStory \
               -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath SimulatorData \
               ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO \
