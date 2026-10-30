@@ -156,6 +156,7 @@ public final class GameStore: @unchecked Sendable {
               backup.turns.enumerated().allSatisfy({ $0.element.sessionID == backup.session.id && $0.element.number == $0.offset + 1 }),
               Set(backup.turns.map(\.id)).count == backup.turns.count else { throw StoryError.invalid("備份結構或回合順序不完整。") }
         try backup.session.settings.validate()
+        try RuleValidator.validateSnapshot(backup.session)
         // Import is a fresh local lineage; no remote IDs/attempts/caches are imported.
         backup.session.id = UUID()
         try execute("INSERT INTO session VALUES(1,?,?,?)", [backup.session.id.uuidString, String(backup.session.version), try JSONCoding.encode(backup.session)])

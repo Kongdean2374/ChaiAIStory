@@ -46,6 +46,7 @@ for name in ["Debug","Release"]:
     if name=="Debug":
         settings["SWIFT_ACTIVE_COMPILATION_CONDITIONS"]="DEBUG"
         settings["ENABLE_TESTABILITY"]="YES"
+        settings["ONLY_ACTIVE_ARCH"]="YES"
     configs.append(add(name, "{isa = XCBuildConfiguration; name = "+name+"; buildSettings = {"+"".join(k+" = "+q(v)+";" for k,v in settings.items())+"}; }"))
 configlist = add("configlist", "{isa = XCConfigurationList; buildConfigurations = ("+",".join(configs)+"); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; }")
 target = add("target", "{isa = PBXNativeTarget; buildConfigurationList = "+configlist+"; buildPhases = ("+",".join([sources,frameworks,resources])+"); buildRules = (); dependencies = (); name = ChaiAIStory; packageProductDependencies = ("+dependency+"); productName = ChaiAIStory; productReference = "+product+"; productType = \"com.apple.product-type.application\"; }")
@@ -63,7 +64,11 @@ uidependency=add("uitargetdep","{isa = PBXTargetDependency; target = "+target+";
 uitarget=add("uitarget", "{isa = PBXNativeTarget; buildConfigurationList = "+uiconfiglist+"; buildPhases = ("+uisources+"); buildRules = (); dependencies = ("+uidependency+"); name = ChaiAIStoryUITests; productName = ChaiAIStoryUITests; productReference = "+uiproduct+"; productType = "+q("com.apple.product-type.bundle.ui-testing")+"; }")
 objects[group]=objects[group].replace(products+");",products+","+uitestfile+");")
 objects[products]=objects[products].replace(product+");",product+","+uiproduct+");")
-root = add("project", "{isa = PBXProject; attributes = {LastUpgradeCheck = 1600; }; buildConfigurationList = "+configlist+"; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = \"zh-Hant\"; hasScannedForEncodings = 0; knownRegions = (\"zh-Hant\",en,Base); mainGroup = "+group+"; packageReferences = ("+package+"); productRefGroup = "+products+"; projectDirPath = \"\"; projectRoot = \"\"; targets = ("+target+","+uitarget+"); }")
+projectconfigs=[]
+for name in ["Debug","Release"]:
+    projectconfigs.append(add("project"+name, "{isa = XCBuildConfiguration; name = "+name+"; buildSettings = {SWIFT_VERSION = 5.0; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; }; }"))
+projectconfiglist=add("projectconfiglist", "{isa = XCConfigurationList; buildConfigurations = ("+",".join(projectconfigs)+"); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; }")
+root = add("project", "{isa = PBXProject; attributes = {LastUpgradeCheck = 1600; }; buildConfigurationList = "+projectconfiglist+"; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = \"zh-Hant\"; hasScannedForEncodings = 0; knownRegions = (\"zh-Hant\",en,Base); mainGroup = "+group+"; packageReferences = ("+package+"); productRefGroup = "+products+"; projectDirPath = \"\"; projectRoot = \"\"; targets = ("+target+","+uitarget+"); }")
 (project / "project.pbxproj").write_text("// !$*UTF8*$!\n{archiveVersion = 1; classes = {}; objectVersion = 56; objects = {\n"+"\n".join(k+" = "+v+";" for k,v in objects.items())+"\n}; rootObject = "+root+"; }\n")
 schemes = project / "xcshareddata/xcschemes"
 schemes.mkdir(parents=True, exist_ok=True)

@@ -262,4 +262,20 @@ final class StoryCoreTests: XCTestCase {
         XCTAssertNil(try db.session()); XCTAssertEqual(try db.draft(), draft)
     }
 
+    func testImportRejectsInvalidWorldWithoutPartialSave() throws {
+        let db = try store(); _ = try opened(db)
+        let data = try db.backup()
+        var backup = try JSONDecoder().decode(GameStore.Backup.self, from: data)
+        backup.session.world.condition.vitality = -1
+        try db.deleteGame()
+        XCTAssertThrowsError(try db.restore(JSONEncoder().encode(backup)))
+        XCTAssertNil(try db.session())
+    }
+    func testBoundedHistorySearchEscapesWildcardsAndIsolatesSession() throws {
+        let db = try store(); let base = try opened(db)
+        XCTAssertEqual(try db.searchHistory(sessionID: base.id, query: "晨光").count, 1)
+        XCTAssertTrue(try db.searchHistory(sessionID: base.id, query: "%").isEmpty)
+        XCTAssertTrue(try db.searchHistory(sessionID: UUID(), query: "晨光").isEmpty)
+    }
+
 }

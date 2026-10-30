@@ -16,8 +16,8 @@ struct CreationWizard: View {
                     switch step {
                     case 0:
                         Section("選擇世界的可能") {
-                            Picker("故事類型", selection: $model.draft.genre) { ForEach(genres, id: \.self) { Text($0).tag($0) } }.pickerStyle(.inline)
-                            if !genres.dropLast().contains(model.draft.genre) { TextField("自訂題材", text: $model.draft.genre) }
+                            Picker("故事類型", selection: Binding(get: { genres.contains(model.draft.genre) ? model.draft.genre : "自訂" }, set: { model.draft.genre = $0 })) { ForEach(genres, id: \.self) { Text($0).tag($0) } }.pickerStyle(.inline)
+                            if !genres.dropLast().contains(model.draft.genre) { TextField("自訂題材", text: Binding(get: { model.draft.genre == "自訂" ? "" : model.draft.genre }, set: { model.draft.genre = $0.isEmpty ? "自訂" : $0 })) }
                         }
                     case 1:
                         Section("世界模板") {

@@ -77,8 +77,9 @@ struct Preferences: Codable {
     func verify() {
         guard !busy, let store else { return }
         busy = true; phase = "驗證金鑰及模型能力…"
+        let verificationID = UUID(); currentID = verificationID
         task = Task {
-            defer { busy = false; phase = "" }
+            defer { if currentID == verificationID { busy = false; phase = ""; currentID = nil } }
             let client = OpenAIClient(key: Keychain.read())
             let owner = session ?? GameSession(settings: draft)
             let attempt = GenerationAttempt(session: owner, action: "連線驗證", model: preferences.model)
@@ -95,11 +96,12 @@ struct Preferences: Codable {
                     try await Task.sleep(for: .seconds(2)); final = try await client.retrieve(final.id)
                 }
                 try record(final, attempt: attempt, ledgerID: attempt.id.uuidString)
+                guard !Task.isCancelled, currentID == verificationID else { throw CancellationError() }
                 guard final.status == "completed", final.text.contains("true") else { throw StoryError.invalid("模型未通過結構化輸出驗證；可改用較高輸出上限的模型。") }
                 notice = "驗證成功：此 Key 可使用 \(preferences.model) 的 Responses、結構化輸出\(preferences.background ? "及背景模式" : "（前景模式）")。查詢工具將於遊戲請求驗證。"
             } catch {
-                if let result, preferences.background { try? await client.cancel(result.id) }
-                report(error)
+                if let result, preferences.background { Task { try? await client.cancel(result.id) } }
+                if !Task.isCancelled { report(error) }
             }
             usage = (try? store.usage()) ?? usage
         }
@@ -191,15 +193,15 @@ struct Preferences: Codable {
         } catch {
             if let response = lastResponse { try? record(response, attempt: attempt, ledgerID: ledgerID) }
             if let current = try? store.attempt(attempt.id), !current.phase.terminal { _ = try? store.transition(attempt.id, Date() > attempt.deadline ? .expired : .failed) }
-            if background, let id = lastResponse?.id { try? await client.cancel(id) }
+            if background, let id = lastResponse?.id { Task { try? await client.cancel(id) } }
             if !Task.isCancelled {
                 report(error)
                 needsSync = preferences.syncOnConflict && !attempt.memoryOnly && !initial
                     && ["不一致", "改寫", "衝突", "隱藏資訊"].contains(where: error.localizedDescription.contains)
             }
         }
-        guard currentID == attempt.id else { return }
         usage = (try? store.usage()) ?? usage
+        guard currentID == attempt.id else { return }
         busy = false; pendingAction = nil; phase = ""; currentID = nil; endBackgroundTask()
         if let session, !session.dead, needsSync || (success && preferences.syncEvery > 0 && session.lastCommittedTurn % preferences.syncEvery == 0) {
             generate(action: "例行記憶核對", memoryOnly: true)

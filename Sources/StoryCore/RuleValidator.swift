@@ -111,6 +111,24 @@ public enum RuleValidator {
         guard result.world.entities.count <= 20000, result.world.inventory.count <= 10000, result.knowledge.count <= 30000 else { throw StoryError.invalid("世界資料已達安全上限，請匯出紀錄。") }
         return result
     }
+    public static func validateSnapshot(_ session: GameSession) throws {
+        let world = session.world
+        let ids = world.entities.map(\.id) + world.inventory.map(\.id) + world.hiddenFacts.map(\.id)
+        guard ids.allSatisfy({ !$0.isEmpty }), Set(ids).count == ids.count,
+              Set(session.knowledge.map(\.id)).count == session.knowledge.count,
+              session.knowledge.allSatisfy({ ids.contains($0.subjectID) && (0...1).contains($0.confidence) }),
+              world.minute >= 0, world.minute <= Int.max - 525600,
+              (0...100).contains(world.condition.vitality), (0...100).contains(world.condition.fatigue),
+              (0...100).contains(world.condition.energy),
+              world.inventory.allSatisfy({ (0...100000).contains($0.quantity) && (!$0.visibleInInventory || $0.knownToProtagonist) }),
+              world.entities.count <= 20000, world.inventory.count <= 10000, session.knowledge.count <= 30000 else {
+            throw StoryError.invalid("備份世界資料不完整或超出安全範圍。")
+        }
+        let projection = PlayerVisibleProjection(session)
+        try guardText([projection.sensation, projection.symptoms, projection.location, projection.time].joined(separator: "\n"), session: session)
+        for item in projection.inventory { try guardText(item.name + item.detail, session: session) }
+        for entry in projection.journal { try guardText(entry.title + entry.text + entry.source, session: session) }
+    }
     public static func guardText(_ text: String, session: GameSession) throws {
         let revealed = Set(session.knowledge.map(\.subjectID))
         let forbidden = session.world.hiddenFacts.filter { !revealed.contains($0.id) }.flatMap(\.forbiddenTerms)
