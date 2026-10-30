@@ -16,23 +16,27 @@ struct StoryTimeline: View {
         GeometryReader { viewport in
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 14) {
                         if typeSize.isAccessibilitySize {
                             statusCards.id("statusCards")
                             Button("前往最新選項") { scrollToLatest(proxy) }
                                 .frame(maxWidth: .infinity, minHeight: 44)
                                 .accessibilityIdentifier("latestChoices")
                         }
-                        if (model.turns.first?.number ?? 1) > 1 {
-                            Button("載入較早的故事") { model.loadOlder() }.frame(maxWidth: .infinity, minHeight: 44)
-                        }
-                        ForEach(model.turns) { turn in
-                            VStack(spacing: 10) {
-                                Text("第 \(turn.number) 回").font(.caption2).foregroundStyle(.secondary)
-                                StoryBubble(text: turn.action, isPlayer: true, size: model.readingSize, availableWidth: viewport.size.width - 24)
-                                StoryBubble(text: turn.narrative, isPlayer: false, size: model.readingSize, availableWidth: viewport.size.width - 24)
-                                    .contextMenu { Button("複製段落", systemImage: "doc.on.doc") { UIPasteboard.general.string = turn.narrative } }
-                            }.id(turn.id)
+                        // Only history is lazy. The small interactive footer must stay laid out
+                        // when its height exceeds a small-screen accessibility viewport.
+                        LazyVStack(alignment: .leading, spacing: 14) {
+                            if (model.turns.first?.number ?? 1) > 1 {
+                                Button("載入較早的故事") { model.loadOlder() }.frame(maxWidth: .infinity, minHeight: 44)
+                            }
+                            ForEach(model.turns) { turn in
+                                VStack(spacing: 10) {
+                                    Text("第 \(turn.number) 回").font(.caption2).foregroundStyle(.secondary)
+                                    StoryBubble(text: turn.action, isPlayer: true, size: model.readingSize, availableWidth: viewport.size.width - 24)
+                                    StoryBubble(text: turn.narrative, isPlayer: false, size: model.readingSize, availableWidth: viewport.size.width - 24)
+                                        .contextMenu { Button("複製段落", systemImage: "doc.on.doc") { UIPasteboard.general.string = turn.narrative } }
+                                }.id(turn.id)
+                            }
                         }
                         if let pending = model.pendingAction {
                             StoryBubble(text: pending, isPlayer: true, size: model.readingSize, availableWidth: viewport.size.width - 24).opacity(0.65)
