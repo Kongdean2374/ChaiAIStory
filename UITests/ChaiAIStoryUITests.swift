@@ -1,6 +1,7 @@
 import XCTest
 
 final class ChaiAIStoryUITests: XCTestCase {
+    override func setUpWithError() throws { continueAfterFailure = false }
     func launchStory(health: String = "normal", large: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-story-fixture", "--health=\(health)", "-AppleLanguages", "(zh-Hant)", "-AppleLocale", "zh_TW"]
@@ -9,9 +10,14 @@ final class ChaiAIStoryUITests: XCTestCase {
         return app
     }
     func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+        let scroll = app.scrollViews["storyScroll"]
         for _ in 0..<14 {
             if element.exists && element.isHittable { return }
-            app.scrollViews["storyScroll"].swipeUp()
+            if element.exists && element.frame.maxY < scroll.frame.minY {
+                scroll.swipeDown()
+            } else {
+                scroll.swipeUp()
+            }
         }
     }
     func testHealthCardsDetailsAndCharacterAgreeWithoutAPI() {
