@@ -19,6 +19,7 @@ final class ChaiAIStoryUITests: XCTestCase {
                 scroll.swipeUp()
             }
         }
+        print("Unable to reach element: \(app.debugDescription)")
     }
     func testHealthCardsDetailsAndCharacterAgreeWithoutAPI() {
         let app = launchStory(health: "injured")
@@ -68,12 +69,23 @@ final class ChaiAIStoryUITests: XCTestCase {
         app.buttons["healthCard"].tap()
         XCTAssertEqual(app.staticTexts["healthFeeling"].label, "冷得發抖")
         app.buttons["closeHealth"].tap()
+        let latest = app.buttons["latestChoices"]
+        scrollTo(latest, in: app)
+        latest.tap()
         let choice = app.buttons["storyChoice4"]
         scrollTo(choice, in: app)
         XCTAssertTrue(choice.isHittable)
         XCTAssertLessThanOrEqual(choice.frame.maxX, app.windows.firstMatch.frame.maxX)
         XCTAssertGreaterThan(choice.frame.height, 44)
-        XCTAssertTrue(app.buttons["sendAction"].exists)
+        let input = app.textFields["storyInput"].exists ? app.textFields["storyInput"] : app.textViews["storyInput"]
+        XCTAssertTrue(input.isHittable)
+        input.tap(); input.typeText("test")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["sendAction"].isHittable)
+        XCTAssertLessThanOrEqual(app.buttons["sendAction"].frame.maxY, app.keyboards.firstMatch.frame.minY)
+        app.buttons["收起鍵盤"].tap()
+        app.buttons["healthShortcut"].tap()
+        XCTAssertEqual(app.staticTexts["healthFeeling"].label, "冷得發抖")
     }
     func testVersionAndSavedRangeVisible() {
         let app = launchStory(health: "waking")

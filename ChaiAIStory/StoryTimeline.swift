@@ -17,6 +17,12 @@ struct StoryTimeline: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
+                        if typeSize.isAccessibilitySize {
+                            statusCards.id("statusCards")
+                            Button("前往最新選項") { scrollToLatest(proxy) }
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .accessibilityIdentifier("latestChoices")
+                        }
                         if (model.turns.first?.number ?? 1) > 1 {
                             Button("載入較早的故事") { model.loadOlder() }.frame(maxWidth: .infinity, minHeight: 44)
                         }
@@ -63,7 +69,12 @@ struct StoryTimeline: View {
                     .onPreferenceChange(BottomPosition.self) { nearBottom = $0 < viewport.size.height + 70 }
                     .onChange(of: model.turns.last?.id) { _, _ in if nearBottom { scrollToLatest(proxy) } }
                     .onChange(of: model.busy) { _, _ in if nearBottom { scrollToLatest(proxy) } }
-                    .onAppear { if !didInitialScroll { proxy.scrollTo("bottom", anchor: .bottom); didInitialScroll = true } }
+                    .onAppear {
+                        if !didInitialScroll {
+                            if !typeSize.isAccessibilitySize { proxy.scrollTo("bottom", anchor: .bottom) }
+                            didInitialScroll = true
+                        }
+                    }
                     .overlay(alignment: .bottomTrailing) {
                         if !nearBottom {
                             Button { scrollToLatest(proxy) } label: { Label("跳到最新", systemImage: "arrow.down").font(.caption) }
@@ -72,12 +83,15 @@ struct StoryTimeline: View {
                     }
             }
         }
-        .safeAreaInset(edge: .top, spacing: 0) { statusCards }
+        .safeAreaInset(edge: .top, spacing: 0) { if !typeSize.isAccessibilitySize { statusCards } }
         .safeAreaInset(edge: .bottom, spacing: 0) { composer }
         .background(Color.storyInk)
         .navigationTitle("故事").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { Button("首頁", systemImage: "house") { model.showGame = false } }
+            ToolbarItem(placement: .topBarTrailing) {
+                if typeSize.isAccessibilitySize { Button("健康") { showHealth = true }.accessibilityIdentifier("healthShortcut") }
+            }
             ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("收起鍵盤") { inputFocused = false } }
         }
         .sheet(isPresented: $showHealth) { HealthSheet() }

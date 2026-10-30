@@ -27,7 +27,7 @@ API 失敗不會自動重送 POST；玩家可檢查錯誤後自行重試。完�
 - https://docs.github.com/en/actions/tutorials/store-and-share-data
 
 ## 1.1.0（Build 2）更新
-劇情頁改用頂部安全區資訊卡與底部安全區輸入，所有選項置於主捲動區垂直完整換行。健康卡、健康詳情與角色頁共用 HealthProjection；只讀已提交感知字串，不以 HP/內部數值推斷症狀，舊資料含禁用字樣時提供安全 fallback。閱讀字級 14–22，並繼續遵循 Dynamic Type、VoiceOver 與減少動態效果。
+劇情頁改用頂部安全區資訊卡與底部安全區輸入，所有選項置於主捲動區垂直完整換行。最大輔助字級時資訊卡移入捲動內容，保留導覽列健康捷徑及前往最新選項按鈕，避免固定卡片壓縮閱讀區。健康卡、健康詳情與角色頁共用 HealthProjection；只讀已提交感知字串，不以 HP/內部數值推斷症狀，舊資料含禁用字樣時提供安全 fallback。閱讀字級 14–22，並繼續遵循 Dynamic Type、VoiceOver 與減少動態效果。
 
 CreationDraft 新增可選 narrativeRange，舊 JSON 欄位缺少時由原 length 推導 75%～125% 範圍（200→150～250、120→90～150）。SQLite schema 保持 v1，舊回合不改寫；新 range 只在玩家明確儲存時寫入當前 session。全域舊 narrativeLength 不再覆蓋存檔。新增可選 lengthReport 亦兼容舊回合；Keychain service、bundle ID、資料庫路徑不變。
 
