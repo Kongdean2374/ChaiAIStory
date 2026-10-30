@@ -132,7 +132,7 @@ public enum ChangeOperation: String, Codable, CaseIterable, Sendable {
     case add_entity, update_entity, add_item, adjust_item, equip_item, discover_item, add_hidden_fact, condition, advance_time, death
 }
 /// Flat typed command envelope, NOT SQL or arbitrary key paths. Unused fields must be empty/zero/null.
-public struct ProposedChange: Codable, Sendable {
+public struct ProposedChange: Codable, Equatable, Sendable {
     public var operation: ChangeOperation
     public var targetID: String
     public var amount: Int
@@ -146,7 +146,7 @@ public struct ProposedChange: Codable, Sendable {
         self.entity = entity; self.item = item; self.hiddenFact = hiddenFact; self.physicalCondition = physicalCondition
     }
 }
-public struct VisibleText: Codable, Sendable {
+public struct VisibleText: Codable, Equatable, Sendable {
     public var text: String
     public var knowledgeIDs: [String]
     public init(_ text: String, knowledgeIDs: [String] = []) { self.text = text; self.knowledgeIDs = knowledgeIDs }

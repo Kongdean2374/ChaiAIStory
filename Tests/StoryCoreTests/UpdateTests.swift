@@ -26,9 +26,9 @@ final class UpdateTests: XCTestCase {
         var original = candidate(50)
         original.proposedChanges = [.init(operation: .advance_time, amount: 15)]
         let revised = try NarrativePolicy.revise(original, with: .init(narrative: candidate(200).narrative), base: base)
-        XCTAssertEqual(try JSONCoding.encode(revised.proposedChanges), try JSONCoding.encode(original.proposedChanges))
+        XCTAssertEqual(revised.proposedChanges, original.proposedChanges)
         XCTAssertEqual(revised.choices.map(\.text), original.choices.map(\.text))
-        XCTAssertEqual(try JSONCoding.encode(revised.knowledgeReveals), try JSONCoding.encode(original.knowledgeReveals))
+        XCTAssertEqual(revised.knowledgeReveals, original.knowledgeReveals)
         XCTAssertThrowsError(try NarrativePolicy.revise(original, with: .init(narrative: candidate(50).narrative), base: base))
         XCTAssertThrowsError(try NarrativePolicy.validate(revised, base: base, repairCount: 2))
     }
