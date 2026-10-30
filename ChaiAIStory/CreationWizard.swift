@@ -56,13 +56,8 @@ struct CreationWizard: View {
                         }
                     case 4:
                         Section("繁體中文 · 沉浸式主角視角") {
-                            Picker("目標篇幅", selection: $model.draft.length) {
-                                Text("極短 · 約 20–50 字").tag(35); Text("短篇 · 約 50–120 字（推薦）").tag(120)
-                                Text("標準 · 約 120–250 字").tag(200); Text("詳細 · 約 250–500 字").tag(400)
-                                Text("自訂目前值 · \(model.draft.length) 字").tag(model.draft.length)
-                            }
-                            Stepper("自訂：\(model.draft.length) 字", value: $model.draft.length, in: 20...2000, step: 10)
-                            Text("篇幅以中文可見字數約值計算，不是 Token。重要事件可能略超出。")
+                            NarrativeRangeEditor(range: Binding(get: { model.draft.effectiveNarrativeRange }, set: { model.draft.narrativeRange = $0 }))
+
                         }
                     default:
                         Section("確認本次世界") {
@@ -70,7 +65,7 @@ struct CreationWizard: View {
                             LabeledContent("主角", value: "\(model.draft.name) · \(model.draft.age) 歲")
                             LabeledContent("身份", value: model.draft.identity)
                             LabeledContent("身世", value: model.draft.background); LabeledContent("家庭", value: model.draft.family)
-                            LabeledContent("敘事目標", value: "約 \(model.draft.length) 字")
+                            LabeledContent("敘事目標", value: model.draft.effectiveNarrativeRange.label)
                         }
                         Section {
                             Text("AI 將一次生成世界、人物、初始狀態、第一段故事與選項。驗證成功後才建立唯一正式存檔；失敗保留草稿。")
@@ -83,7 +78,7 @@ struct CreationWizard: View {
                     Button("上一步") { step -= 1 }.disabled(step == 0 || model.busy)
                     Spacer()
                     if step < 5 { Button("下一步") { next() }.buttonStyle(.borderedProminent).disabled(model.busy) }
-                    else { Button("生成世界") { model.preferences.narrativeLength = model.draft.length; model.generate(action: "建立全新獨立世界，開始我的人生。", initial: true) }.buttonStyle(.borderedProminent).disabled(model.busy || !model.hasKey) }
+                    else { Button("生成世界") { model.generate(action: "建立全新獨立世界，開始我的人生。", initial: true) }.buttonStyle(.borderedProminent).disabled(model.busy || !model.hasKey) }
                 }.padding()
             }
             .navigationTitle("建立你的故事").navigationBarTitleDisplayMode(.inline)

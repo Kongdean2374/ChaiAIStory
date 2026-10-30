@@ -5,7 +5,9 @@ import StoryCore
 struct Preferences: Codable {
     var model = "gpt-4.1-mini"
     var background = true
-    var narrativeLength = 120
+    var narrativeLength = 120 // Legacy default, never applied over a saved game.
+    var defaultNarrativeRange: NarrativeRange?
+    var readingSize: Double?
     var syncEvery = 20
     var syncOnRestore = false
     var syncOnConflict = false
@@ -41,6 +43,20 @@ struct Preferences: Codable {
     var unknownCost: Bool { usage.contains { $0.inputTokens == nil || $0.estimatedUSD == nil } }
     init() {
         preferences = (UserDefaults.standard.data(forKey: "preferences").flatMap { try? JSONDecoder().decode(Preferences.self, from: $0) }) ?? Preferences()
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-story-fixture") {
+            do {
+                let isolated = try GameStore(path: ":memory:")
+                store = isolated
+                let args = ProcessInfo.processInfo.arguments
+                let health = args.first(where: { $0.hasPrefix("--health=") })?.replacingOccurrences(of: "--health=", with: "") ?? "normal"
+                session = try UITestFixture.populate(isolated, health: health)
+                turns = try isolated.turns(sessionID: session!.id)
+                showGame = true
+            } catch { fatalError = error.localizedDescription }
+            return
+        }
+        #endif
         do {
             let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("ChaiAIStory", isDirectory: true)
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -68,7 +84,11 @@ struct Preferences: Codable {
     }
     func reload() throws {
         session = try store?.session(); usage = try store?.usage() ?? []
-        if let session { turns = try store?.turns(sessionID: session.id) ?? [] } else { turns = [] }
+        if let session {
+            let recent = try store?.turns(sessionID: session.id) ?? []
+            let existing = turns.filter { $0.sessionID == session.id }
+            turns = Dictionary((existing + recent).map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest }).values.sorted { $0.number < $1.number }
+        } else { turns = [] }
     }
     func saveKey(_ key: String) { do { try Keychain.save(key.trimmingCharacters(in: .whitespacesAndNewlines)); hasKey = !Keychain.read().isEmpty; notice = hasKey ? "API Key 已儲存於此裝置 Keychain。" : "API Key 已刪除。" } catch { report(error) } }
     func refreshModels() async {
@@ -120,8 +140,7 @@ struct Preferences: Codable {
         guard !trimmed.isEmpty, trimmed.count <= 4000 else { notice = "行動需為 1–4000 字。"; return }
         do {
             if initial { try draft.validate(); saveDraft() }
-            guard var base = initial ? GameSession(settings: draft) : session, !base.dead || memoryOnly else { return }
-            base.settings.length = preferences.narrativeLength
+            guard let base = initial ? GameSession(settings: draft) : session, !base.dead || memoryOnly else { return }
             let attempt = GenerationAttempt(session: base, action: trimmed, memoryOnly: memoryOnly, model: preferences.model)
             try store.start(attempt, initial: initial)
             busy = true; currentID = attempt.id; pendingAction = memoryOnly ? nil : trimmed; phase = memoryOnly ? "正在重整本局記憶…" : "AI 正在推演劇情…"
@@ -145,24 +164,10 @@ struct Preferences: Codable {
                 try check(attempt.id)
                 ledgerID = "\(attempt.id):\(round)"
                 try store.record(ApiUsage(id: ledgerID, attempt: attempt))
-                var response = try await client.create(model: attempt.model, input: input, background: background, memoryOnly: attempt.memoryOnly, withTools: round < 4)
+                var response = try await client.create(model: attempt.model, input: input, background: background, memoryOnly: attempt.memoryOnly, withTools: round < 4, range: base.settings.effectiveNarrativeRange, opening: initial)
                 lastResponse = response
-                try record(response, attempt: attempt, ledgerID: ledgerID)
-                try check(attempt.id)
-                _ = try store.transition(attempt.id, response.status == "queued" ? .queued : .in_progress, responseID: response.id)
-                // Persisted response ID is the sole polling target. No POST retry on network errors.
-                var getFailures = 0
-                while ["queued", "in_progress"].contains(response.status) {
-                    try check(attempt.id)
-                    guard Date() < attempt.deadline else { throw StoryError.invalid("背景回應已逾期，未儲存本輪；可能已計費。") }
-                    if !foreground { try await Task.sleep(for: .seconds(1)); continue }
-                    try await Task.sleep(for: .seconds(min(8, 2 + getFailures * 2)))
-                    do { response = try await client.retrieve(response.id); getFailures = 0 }
-                    catch { getFailures += 1; if getFailures >= 3 { throw error }; continue }
-                    lastResponse = response
-                    try record(response, attempt: attempt, ledgerID: ledgerID)
-                }
-                guard response.status == "completed", !response.refused else { throw StoryError.invalid(response.error?.message ?? "生成未完整完成或被拒絕；未寫入任何劇情。") }
+                response = try await poll(response, client: client, attempt: attempt, ledgerID: ledgerID)
+                lastResponse = response
                 if !response.calls.isEmpty {
                     guard !attempt.memoryOnly, round < 4 else { throw StoryError.invalid("查詢次數已達上限，本輪未儲存。") }
                     input += try OpenAIClient.assistantItems(response)
@@ -175,23 +180,46 @@ struct Preferences: Codable {
                     continue
                 }
                 try check(attempt.id)
-                _ = try store.transition(attempt.id, .validating); phase = "正在驗證並儲存…"
                 if attempt.memoryOnly {
+                    _ = try store.transition(attempt.id, .validating)
                     let memory = try JSONCoding.decode(NarrativeMemory.self, response.text)
                     try store.saveMemory(memory, attemptID: attempt.id)
                     // A narrator summary can contain secrets. Only fixed diagnostics counts reach the UI.
                     memoryDiagnostic = "重整完成：\(memory.conflicts.count) 個矛盾、\(memory.missingContext.count) 項缺漏；世界及回合未變。"
                     notice = memoryDiagnostic
                 } else {
-                    let proposal = try JSONCoding.decode(StoryTurnResponse.self, response.text)
-                    _ = try store.commit(attempt.id, response: proposal, initial: initial ? base : nil)
+                    var proposal = try JSONCoding.decode(StoryTurnResponse.self, response.text)
+                    var repairCount = 0
+                    let report = try NarrativePolicy.report(proposal, base: base)
+                    if NarrativePolicy.requiresRevision(report) {
+                        repairCount = 1
+                        phase = "正在修正正文篇幅（最多一次，另計用量）…"
+                        ledgerID = "\(attempt.id):length-repair"
+                        try check(attempt.id)
+                        try store.record(ApiUsage(id: ledgerID, attempt: attempt, note: "正文篇幅修正；未知／可能計費"))
+                        lastResponse = nil
+                        let instruction = """
+                        這是未提交候選的唯一一次正文修正。\(base.settings.effectiveNarrativeRange.prompt)
+                        原稿實際 \(report.actual) 個漢字。只補寫或精簡 narrative，完整保留事件因果、已發生動作與對話意義，
+                        不增加新事件或主角不知道的資訊；不得改變世界命令、選項、認知揭露或結果。
+                        不要用截斷句子、重複描寫湊數。輸出只含 narrative 的 JSON。
+                        凍結候選：\(try JSONCoding.encode(proposal))
+                        """
+                        var revised = try await client.create(model: attempt.model, input: [["role": "user", "content": context + "\n" + instruction]], background: background, withTools: false, range: base.settings.effectiveNarrativeRange, revision: true)
+                        lastResponse = revised
+                        revised = try await poll(revised, client: client, attempt: attempt, ledgerID: ledgerID)
+                        lastResponse = revised
+                        proposal = try NarrativePolicy.revise(proposal, with: JSONCoding.decode(NarrativeRevision.self, revised.text), base: base)
+                    }
+                    try check(attempt.id)
+                    _ = try store.transition(attempt.id, .validating); phase = "正在驗證並儲存…"
+                    _ = try store.commit(attempt.id, response: proposal, initial: initial ? base : nil, repairCount: repairCount)
                     if proposal.disposition == .rejected_invalid_request { notice = proposal.rejectionReason }
                     else { showWizard = false; showGame = true; selectedTab = 0; success = true }
                 }
                 try reload(); break
             }
         } catch {
-            if let response = lastResponse { try? record(response, attempt: attempt, ledgerID: ledgerID) }
             if let current = try? store.attempt(attempt.id), !current.phase.terminal { _ = try? store.transition(attempt.id, Date() > attempt.deadline ? .expired : .failed) }
             if background, let id = lastResponse?.id { Task { try? await client.cancel(id) } }
             if !Task.isCancelled {
@@ -206,6 +234,39 @@ struct Preferences: Codable {
         if let session, !session.dead, needsSync || (success && preferences.syncEvery > 0 && session.lastCommittedTurn % preferences.syncEvery == 0) {
             generate(action: "例行記憶核對", memoryOnly: true)
         }
+    }
+    private func poll(_ initial: ResponseEnvelope, client: OpenAIClient, attempt: GenerationAttempt, ledgerID: String) async throws -> ResponseEnvelope {
+        guard let store else { throw StoryError.stale }
+        var response = initial
+        defer { if Task.isCancelled { Task { try? await client.cancel(initial.id) } } }
+        try record(response, attempt: attempt, ledgerID: ledgerID)
+        try check(attempt.id)
+        _ = try store.transition(attempt.id, response.status == "queued" ? .queued : .in_progress, responseID: response.id)
+        var failures = 0
+        while ["queued", "in_progress"].contains(response.status) {
+            try check(attempt.id)
+            guard Date() < attempt.deadline else { throw StoryError.invalid("背景回應已逾期，本輪未儲存；可能已計費。") }
+            if !foreground { try await Task.sleep(for: .seconds(1)); continue }
+            try await Task.sleep(for: .seconds(min(8, 2 + failures * 2)))
+            do { response = try await client.retrieve(response.id); failures = 0 }
+            catch { failures += 1; if failures >= 3 { throw error }; continue }
+            try record(response, attempt: attempt, ledgerID: ledgerID)
+        }
+        guard response.status == "completed", !response.refused else {
+            throw StoryError.invalid("生成未完整完成（\(response.status)）或被拒絕；未寫入劇情。若輸出達上限，可減少篇幅或改用支援較長輸出的模型。")
+        }
+        return response
+    }
+    var effectiveNarrativeRange: NarrativeRange { session?.settings.effectiveNarrativeRange ?? draft.effectiveNarrativeRange }
+    var readingSize: Double { min(22, max(14, preferences.readingSize ?? 16)) }
+    func applyNarrativeRange(_ range: NarrativeRange) {
+        guard !busy else { return }
+        do {
+            try range.validate()
+            if let current = session { session = try store?.setNarrativeRange(range, sessionID: current.id) }
+            else { draft.narrativeRange = range; try store?.saveDraft(draft); preferences.defaultNarrativeRange = range }
+            notice = "已儲存正文範圍 \(range.label)，下個正常回合生效。"
+        } catch { report(error) }
     }
     private func check(_ id: UUID) throws {
         try Task.checkCancellation()
@@ -236,7 +297,7 @@ struct Preferences: Codable {
             for name in ["ChaiAIStory-Story.md", "ChaiAIStory-Backup.json"] {
                 try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent(name))
             }
-            session = nil; turns = []; draft = CreationDraft(); usage = []; memoryDiagnostic = "尚未重整"; showGame = false; notice = "角色及本局資料已刪除，API Key 保留。" } catch { report(error) }
+            session = nil; turns = []; draft = CreationDraft(); draft.narrativeRange = preferences.defaultNarrativeRange ?? NarrativeRange(); usage = []; memoryDiagnostic = "尚未重整"; showGame = false; notice = "角色及本局資料已刪除，API Key 保留。" } catch { report(error) }
     }
     func exportStory() throws -> URL {
         guard let store, let session else { throw StoryError.invalid("沒有可匯出的故事。") }

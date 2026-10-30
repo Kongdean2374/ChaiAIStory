@@ -33,9 +33,13 @@ public struct CreationDraft: Codable, Equatable, Sendable {
     public var combat = 0.4
     public var social = 0.6
     public var pace = 0.5
+    // Retained for decoding older saves. Explicit range always takes precedence.
     public var length = 120
+    public var narrativeRange: NarrativeRange? = NarrativeRange()
+    public var effectiveNarrativeRange: NarrativeRange { narrativeRange ?? .legacy(length) }
     public init() {}
     public func validate() throws {
+        try effectiveNarrativeRange.validate()
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !genre.isEmpty,
               (1...120).contains(age), (20...2000).contains(length) else { throw StoryError.invalid("請填寫姓名、題材，年齡 1–120，目標字數 20–2000。") }
         guard [name, template, background, family, appearance, identity, personality, residence, aptitude].allSatisfy({ $0.count <= 2000 }) else { throw StoryError.invalid("每個設定欄位最多 2000 字。") }
@@ -171,6 +175,7 @@ public struct CommittedTurn: Codable, Identifiable, Sendable {
     public var summary: [String]
     public var changes: [ProposedChange]
     public var date: Date
+    public var lengthReport: NarrativeReport? = nil
 }
 public enum GenerationPhase: String, Codable, Sendable {
     case idle, preparing, requesting, queued, in_progress, validating, committing, committed, cancelled, failed, expired

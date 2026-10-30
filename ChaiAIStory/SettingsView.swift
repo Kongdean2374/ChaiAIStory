@@ -13,8 +13,34 @@ struct SettingsView: View {
     @State private var share: SharedFile?
     @State private var importFile = false
     @State private var deleteKey = false
+    @State private var editedRange = NarrativeRange()
     var body: some View {
         Form {
+            Section {
+                Text("版本 \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")（Build \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")）")
+                    .font(.headline).accessibilityIdentifier("appVersion")
+            }
+            Section("閱讀") {
+                Stepper("閱讀字級：\(Int(model.readingSize))", value: Binding(get: { model.readingSize }, set: { model.preferences.readingSize = $0 }), in: 14...22)
+                Text("同時遵循 iPhone 的動態字級設定。").font(.footnote).foregroundStyle(.secondary)
+            }
+            Section(model.session == nil ? "開局草稿的正文篇幅" : "目前存檔的正文篇幅") {
+                Text("目前有效：\(model.effectiveNarrativeRange.label)").accessibilityIdentifier("savedNarrativeRange")
+                NarrativeRangeEditor(range: $editedRange)
+                Button("儲存篇幅設定") { model.applyNarrativeRange(editedRange) }.disabled(model.busy || model.session?.dead == true)
+                Text("正常回合提交前會檢查漢字數；不足或超出時最多修正一次，可能增加 API 費用。修正失敗整輪作廢。拒絕、持續昏迷與人生結局可採較短篇幅；記憶重整不受正文長度限制。").font(.footnote).foregroundStyle(.secondary)
+                NavigationLink("已提交篇幅診斷") {
+                    List(model.turns.reversed()) { turn in
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("第 \(turn.number) 回").font(.headline)
+                            Text("預期：\(turn.lengthReport?.expected.label ?? "舊版未記錄")；實際：\(NarrativePolicy.count(turn.narrative)) 字")
+                            if let report = turn.lengthReport {
+                                Text("修正請求：\(report.repairCount) 次\(report.exception.map { " · " + $0 } ?? "")").font(.caption)
+                            }
+                        }
+                    }.navigationTitle("正文篇幅").onAppear { model.loadOlder() }
+                }
+            }.disabled(model.busy)
             Section {
                 HStack {
                     Group { if visibleKey { TextField("貼上自己的 API Key", text: $key) } else { SecureField("貼上自己的 API Key", text: $key) } }
@@ -43,7 +69,6 @@ struct SettingsView: View {
                 if model.busy { ProgressView(model.phase); Button("停止本次請求", role: .destructive) { model.stop() } }
             }
             Section("敘事與江湖記憶同步") {
-                Stepper("目標篇幅：約 \(model.preferences.narrativeLength) 字", value: $model.preferences.narrativeLength, in: 20...2000, step: 10)
                 Stepper(model.preferences.syncEvery == 0 ? "自動重整：關閉" : "每 \(model.preferences.syncEvery) 回合重整", value: $model.preferences.syncEvery, in: 0...200, step: 5)
                 Toggle("恢復存檔時重整", isOn: $model.preferences.syncOnRestore)
                 Toggle("驗證發現矛盾時重整", isOn: $model.preferences.syncOnConflict)
@@ -97,6 +122,7 @@ struct SettingsView: View {
         .confirmationDialog("刪除本局角色？", isPresented: $deleteFirst, titleVisibility: .visible) { Button("繼續確認刪除", role: .destructive) { deleteFinal = true } } message: { Text("將刪除故事、世界、隱藏事件、AI 上下文與附件，保留 API Key。") }
         .alert("永久刪除，無法復原", isPresented: $deleteFinal) { Button("永久刪除", role: .destructive) { model.delete() }; Button("取消", role: .cancel) {} } message: { Text("請確認已匯出想保留的故事。") }
         .alert("刪除金鑰？", isPresented: $deleteKey) { Button("刪除", role: .destructive) { model.saveKey("") }; Button("取消", role: .cancel) {} }
+        .onAppear { editedRange = model.effectiveNarrativeRange }
         .onDisappear { key = "" }
     }
     private func export(_ backup: Bool) {

@@ -4,7 +4,7 @@ import CSQLite
 
 final class StoryCoreTests: XCTestCase {
     func store() throws -> GameStore { try GameStore(path: ":memory:") }
-    func valid(_ text: String = "你推開門，晨光落在手背上。") -> StoryTurnResponse {
+    func valid(_ text: String = String(repeating: "你推開門，晨光落在手背上。", count: 17)) -> StoryTurnResponse {
         StoryTurnResponse(narrative: text, choices: ["走向街道", "觀察四周", "停下休息"])
     }
     func ready(_ store: GameStore, _ base: GameSession, initial: Bool = false, memory: Bool = false) throws -> GenerationAttempt {

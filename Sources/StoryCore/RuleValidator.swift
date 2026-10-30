@@ -11,7 +11,8 @@ public struct PlayerVisibleProjection: Sendable {
     public let dead: Bool
     public init(_ session: GameSession) {
         name = session.settings.name; dead = session.dead
-        sensation = session.world.condition.sensation; symptoms = session.world.condition.symptoms
+        let health = HealthProjection(session)
+        sensation = health.feeling; symptoms = health.symptoms
         location = session.world.condition.knownLocation; time = session.world.condition.knownTime
         let known = Set(session.knowledge.map(\.subjectID))
         inventory = session.world.inventory.filter { $0.exists && $0.quantity > 0 && $0.knownToProtagonist && $0.visibleInInventory && known.contains($0.id) }
@@ -101,7 +102,7 @@ public enum RuleValidator {
         try guardText([projection.sensation, projection.symptoms, projection.location, projection.time].joined(separator: "\n"), session: result)
         for item in projection.inventory { try guardText(item.name + item.detail, session: result) }
         for entry in result.knowledge { try guardText(entry.title + entry.text + entry.source + entry.discoverability, session: result) }
-        guard !result.world.condition.sensation.contains(where: \.isNumber), !result.world.condition.symptoms.localizedCaseInsensitiveContains("HP"),
+        guard HealthProjection.isSubjective(result.world.condition.sensation), HealthProjection.isSubjective(result.world.condition.symptoms), !result.world.condition.sensation.contains(where: \.isNumber), !result.world.condition.symptoms.localizedCaseInsensitiveContains("HP"),
               !result.world.condition.symptoms.contains("死亡時間") else { throw StoryError.invalid("健康資訊必須是主觀感受。") }
         // While unconscious, no externally sourced revelations or observations may be committed.
         if !original.world.condition.conscious && !result.world.condition.conscious {

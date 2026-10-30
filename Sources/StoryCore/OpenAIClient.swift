@@ -71,11 +71,11 @@ public final class OpenAIClient: @unchecked Sendable {
         struct ModelList: Decodable { struct Model: Decodable { let id: String }; let data: [Model] }
         return try JSONDecoder().decode(ModelList.self, from: data).data.map(\.id).sorted()
     }
-    public func create(model: String, input: [[String: Any]], background: Bool, memoryOnly: Bool = false, probe: Bool = false, withTools: Bool = true) async throws -> ResponseEnvelope {
-        var body: [String: Any] = ["model": model, "input": input, "instructions": probe ? "Return ok=true." : ContextBuilder.instructions,
-            "background": background, "store": false, "include": ["reasoning.encrypted_content"], "max_output_tokens": probe ? 256 : 14000,
-            "text": ["format": ["type": "json_schema", "name": probe ? "capability_probe" : memoryOnly ? "memory_audit" : "story_turn", "strict": true, "schema": probe ? ResponseSchemas.probe : memoryOnly ? ResponseSchemas.memory : ResponseSchemas.story]]]
-        if !probe && !memoryOnly && withTools { body["tools"] = ResponseSchemas.tools; body["parallel_tool_calls"] = false }
+    public func create(model: String, input: [[String: Any]], background: Bool, memoryOnly: Bool = false, probe: Bool = false, withTools: Bool = true, range: NarrativeRange = NarrativeRange(), opening: Bool = false, revision: Bool = false) async throws -> ResponseEnvelope {
+        var body: [String: Any] = ["model": model, "input": input, "instructions": probe ? "Return ok=true." : ContextBuilder.instructions + (revision ? "\n本次是正文修正，不產出世界命令；只輸出 narrative 欄位，依提供的凍結候選保持所有事件不變。" : ""),
+            "background": background, "store": false, "include": ["reasoning.encrypted_content"], "max_output_tokens": probe ? 256 : memoryOnly ? 8000 : NarrativePolicy.outputBudget(range: range, model: model, opening: opening, revision: revision),
+            "text": ["format": ["type": "json_schema", "name": probe ? "capability_probe" : memoryOnly ? "memory_audit" : revision ? "narrative_revision" : "story_turn", "strict": true, "schema": probe ? ResponseSchemas.probe : memoryOnly ? ResponseSchemas.memory : revision ? ResponseSchemas.revision : ResponseSchemas.story]]]
+        if !probe && !memoryOnly && !revision && withTools { body["tools"] = ResponseSchemas.tools; body["parallel_tool_calls"] = false }
         return try JSONDecoder().decode(ResponseEnvelope.self, from: await request("responses", method: "POST", body: body))
     }
     public func retrieve(_ id: String) async throws -> ResponseEnvelope {

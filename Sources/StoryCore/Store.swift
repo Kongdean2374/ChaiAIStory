@@ -64,6 +64,16 @@ public final class GameStore: @unchecked Sendable {
     } }
     public func saveDraft(_ draft: CreationDraft) throws { try synchronized { try execute("INSERT OR REPLACE INTO draft VALUES(1,?)", [try JSONCoding.encode(draft)]) } }
     public func draft() throws -> CreationDraft { try synchronized { try rows("SELECT payload FROM draft").first.map { try JSONCoding.decode(CreationDraft.self, $0[0]) } ?? CreationDraft() } }
+    /// Settings change under the same connection lock; no world/time/turn changes.
+    /// Refuse changes while any generation owns the old settings.
+    public func setNarrativeRange(_ range: NarrativeRange, sessionID: UUID) throws -> GameSession { try synchronized { try transaction {
+        try range.validate()
+        guard var current = try session(), current.id == sessionID, !current.dead,
+              try attempts().allSatisfy({ $0.phase.terminal }) else { throw StoryError.stale }
+        current.settings.narrativeRange = range
+        try execute("UPDATE session SET payload=? WHERE id=?", [try JSONCoding.encode(current), sessionID.uuidString])
+        return current
+    } } }
     public func start(_ attempt: GenerationAttempt, initial: Bool = false) throws { try synchronized { try transaction {
         guard try rows("SELECT 1 FROM tombstones WHERE session_id=?", [attempt.sessionID.uuidString]).isEmpty,
               try attempts().allSatisfy({ $0.phase.terminal }) else { throw StoryError.stale }
@@ -86,12 +96,13 @@ public final class GameStore: @unchecked Sendable {
         try execute("INSERT OR REPLACE INTO usage VALUES(?,?,?)", [usage.id, usage.sessionID.uuidString, try JSONCoding.encode(usage)])
     } }
     public func usage() throws -> [ApiUsage] { try synchronized { try rows("SELECT payload FROM usage ORDER BY rowid DESC").map { try JSONCoding.decode(ApiUsage.self, $0[0]) } } }
-    public func commit(_ id: UUID, response: StoryTurnResponse, initial: GameSession? = nil) throws -> GameSession { try synchronized { try transaction {
+    public func commit(_ id: UUID, response: StoryTurnResponse, initial: GameSession? = nil, repairCount: Int = 0) throws -> GameSession { try synchronized { try transaction {
         guard let attempt = try attempt(id), !attempt.memoryOnly, attempt.phase == .validating,
               attempt.deadline > Date(), try rows("SELECT 1 FROM tombstones WHERE session_id=?", [attempt.sessionID.uuidString]).isEmpty else { throw StoryError.stale }
         let persisted = try session()
         guard let original = persisted ?? initial, original.id == attempt.sessionID, original.version == attempt.baseVersion, original.lastCommittedTurn == attempt.baseTurn,
               (persisted != nil || original.version == 0), try rows("SELECT 1 FROM turns WHERE id=?", [id.uuidString]).isEmpty else { throw StoryError.stale }
+        let lengthReport = try NarrativePolicy.validate(response, base: original, repairCount: repairCount)
         var next = try RuleValidator.apply(response, to: original)
         if response.disposition == .rejected_invalid_request {
             var cancelled = attempt; cancelled.phase = .cancelled
@@ -104,7 +115,7 @@ public final class GameStore: @unchecked Sendable {
             }
         }
         next.version += 1; next.lastCommittedTurn += 1
-        let turn = CommittedTurn(id: id, sessionID: next.id, number: next.lastCommittedTurn, action: attempt.action, narrative: response.narrative.map(\.text).joined(separator: "\n\n"), choices: response.choices.map(\.text), summary: response.continuityNotes, changes: response.proposedChanges, date: Date())
+        let turn = CommittedTurn(id: id, sessionID: next.id, number: next.lastCommittedTurn, action: attempt.action, narrative: response.narrative.map(\.text).joined(separator: "\n\n"), choices: response.choices.map(\.text), summary: response.continuityNotes, changes: response.proposedChanges, date: Date(), lengthReport: lengthReport)
         try execute("INSERT INTO turns VALUES(?,?,?,?)", [id.uuidString, next.id.uuidString, String(turn.number), try JSONCoding.encode(turn)])
         try execute("INSERT OR REPLACE INTO session VALUES(1,?,?,?)", [next.id.uuidString, String(next.version), try JSONCoding.encode(next)])
         try execute("DELETE FROM draft")

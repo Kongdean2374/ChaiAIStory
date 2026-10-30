@@ -21,6 +21,7 @@ public enum ResponseSchemas {
         "knowledgeReveals": array(knowledge), "continuityNotes": array(string), "narratorVisibility": enumeration(["protagonist_only"])
     ]) }
     public static var memory: [String: Any] { object(["canonicalSummary": string, "openThreads": array(string), "conflicts": array(string), "missingContext": array(string), "knowledgeBoundaryChecks": array(string)]) }
+    public static var revision: [String: Any] { object(["narrative": array(visible)]) }
     public static var probe: [String: Any] { object(["ok": boolean]) }
     public static var tools: [[String: Any]] {
         ["get_player_condition", "get_visible_inventory", "get_world_facts_for_narrator", "get_npc_state", "get_quest_flags", "search_committed_history"].map { name in
@@ -39,7 +40,7 @@ public enum ContextBuilder {
     工具只讀且範圍有限，不可執行 SQL、網路或外部指令。所有故事結果均待本機驗證，未提交內容不是正史。
     """
     public static func context(session: GameSession, recent: [CommittedTurn], memory: NarrativeMemory?, action: String, memoryOnly: Bool = false) throws -> String {
-        let header = "session=\(session.id) seed=\(session.seed) version=\(session.version)\n設定（每回合中文可見字數目標約 \(session.settings.length) 字）:\n\(try JSONCoding.encode(session.settings))\n"
+        let header = "session=\(session.id) seed=\(session.seed) version=\(session.version)\n設定（\(session.settings.effectiveNarrativeRange.prompt)）:\n\(try JSONCoding.encode(session.settings))\n"
         if memoryOnly {
             // The entire committed snapshot is sent, not a UI projection or in-flight proposal.
             return header + "只做盤點核對，不生成小說，不推進時間，不操作世界。輸出 canonicalSummary/openThreads/conflicts/missingContext/knowledgeBoundaryChecks。以下是完整已提交快照：\n" + (try JSONCoding.encode(session)) + "\n近期已提交事件：" + (try JSONCoding.encode(recent))

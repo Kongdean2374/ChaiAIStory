@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 project = ROOT / "ChaiAIStory.xcodeproj"
 project.mkdir(exist_ok=True)
+# Every delivered update must increase CURRENT_PROJECT_VERSION; feature updates also increase MARKETING_VERSION.
 objects = {}
 def oid(key): return hashlib.sha256(key.encode()).hexdigest()[:24].upper()
 def add(key, value):
@@ -36,7 +37,7 @@ common = {"SWIFT_VERSION":"5.0", "IPHONEOS_DEPLOYMENT_TARGET":"17.0", "SDKROOT":
  "TARGETED_DEVICE_FAMILY":"1", "PRODUCT_BUNDLE_IDENTIFIER":"com.kongdean.ChaiAIStory",
  "PRODUCT_NAME":"$(TARGET_NAME)", "INFOPLIST_FILE":"Resources/Info.plist",
  "ASSETCATALOG_COMPILER_APPICON_NAME":"AppIcon", "GENERATE_INFOPLIST_FILE":"NO",
- "MARKETING_VERSION":"1.0", "CURRENT_PROJECT_VERSION":"1",
+ "MARKETING_VERSION":"1.1.0", "CURRENT_PROJECT_VERSION":"2",
  "LD_RUNPATH_SEARCH_PATHS":"$(inherited) @executable_path/Frameworks",
  "SUPPORTED_PLATFORMS":"iphoneos iphonesimulator", "SWIFT_EMIT_LOC_STRINGS":"YES"}
 configs=[]

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import plistlib, stat, struct, sys, zipfile
+import plistlib, stat, struct, sys, zipfile, re
+from pathlib import Path
 from pathlib import PurePosixPath
 with zipfile.ZipFile(sys.argv[1]) as archive:
     assert archive.testzip() is None, "Corrupt ZIP"
@@ -12,6 +13,12 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     assert info["CFBundleIdentifier"] == "com.kongdean.ChaiAIStory"
     assert info["CFBundleSupportedPlatforms"] == ["iPhoneOS"]
     assert info["DTPlatformName"] == "iphoneos"
+    source = (Path(__file__).parent / "generate_project.py").read_text()
+    version = re.search(r'"MARKETING_VERSION":"([^"]+)"', source).group(1)
+    build = re.search(r'"CURRENT_PROJECT_VERSION":"([^"]+)"', source).group(1)
+    assert info["CFBundleShortVersionString"] == version, "Wrong marketing version"
+    assert info["CFBundleVersion"] == build, "Wrong build number"
+    print("Version verified: " + version + " (Build " + build + ")")
     binary = archive.read(prefix+info["CFBundleExecutable"])
     assert len(binary)>4096
     assert struct.unpack_from("<I",binary)[0] == 0xfeedfacf

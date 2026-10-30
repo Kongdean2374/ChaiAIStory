@@ -50,7 +50,7 @@ struct CharacterView: View {
                     Text(settings.appearance.isEmpty ? "外貌未設定" : settings.appearance)
                     Text(settings.personality)
                 }
-                Section("主觀身體感受") { Label(visible.sensation, systemImage: "waveform.path.ecg"); Text(visible.symptoms); Text(visible.location); Text(visible.time) }
+                Section("身體狀態") { if let session = model.session { HealthDetails(health: HealthProjection(session)) } }
                 Section("已知背景") { Text(settings.background); Text(settings.family) }
                 KnowledgeSection(title: "能力、名聲與關係", entries: visible.journal.filter { entry in
                     model.session?.world.entities.contains(where: { $0.id == entry.subjectID && [.skill, .relationship].contains($0.kind) }) == true

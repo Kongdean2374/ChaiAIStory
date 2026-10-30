@@ -25,3 +25,14 @@ API 失敗無昂貴的自動修復／重送；玩家可檢查錯誤後自行重�
 - https://developers.openai.com/api/docs/guides/conversation-state
 - https://developer.apple.com/documentation/uikit/preparing-your-ui-to-run-in-the-background
 - https://docs.github.com/en/actions/tutorials/store-and-share-data
+
+## 1.1.0（Build 2）更新
+劇情頁改用頂部安全區資訊卡與底部安全區輸入，所有選項置於主捲動區垂直完整換行。健康卡、健康詳情與角色頁共用 HealthProjection；只讀已提交感知字串，不以 HP/內部數值推斷症狀，舊資料含禁用字樣時提供安全 fallback。閱讀字級 14–22，並繼續遵循 Dynamic Type、VoiceOver 與減少動態效果。
+
+CreationDraft 新增可選 narrativeRange，舊 JSON 欄位缺少時由原 length 推導 75%～125% 範圍（200→150～250、120→90～150）。SQLite schema 保持 v1，舊回合不改寫；新 range 只在玩家明確儲存時寫入當前 session。全域舊 narrativeLength 不再覆蓋存檔。新增可選 lengthReport 亦兼容舊回合；Keychain service、bundle ID、資料庫路徑不變。
+
+所有 narrative.text 合計只計 Unicode Han（包含擴展字與〇），標點、英文、數字、空白、符號及選項皆不計。正常回合必須落於上下限，提示優先範圍為區間的 40%～70%（150～250→190～220）。拒絕、結局、前後均昏迷可短篇，甦醒不豁免；memoryOnly 完全獨立。
+完整候選先檢查世界及正文；篇幅超出區間最多發一次 narrative-only 修正。程式保留原始命令／選項／認知揭露，只替換正文並重新驗證，不能把兩份世界變更合併。修正請求有獨立 usage ledger 項目與畫面提示；修正失敗／取消不提交。存檔交易再次驗證篇幅並保存實際漢字數、當時範圍、修正次數與例外原因。輸出預算依最大篇幅、開局／一般／修正、模型系列計算並設上限；incomplete 不會被當成完成。
+
+新增舊 JSON／舊 SQLite 重開、設定持久化與請求上下文、正文計數／範圍／例外、修正保留命令、取消回滾、健康 fallback／同步／零用量測試。原生 UI 驗收在一般 iPhone 與 SE 模擬器執行，包含健康 sheet、角色一致性、五個長選項、鍵盤、切 Tab／前背景、最大輔助字級及版本資訊。測試專用故事只存在 Debug 及獨立記憶體 DB，Release 不包含測試入口。
+有效 Key 的實際生成品質與修正費用、實體 iPhone 17 Pro 及現有側載簽署身份下的升級保留行為，仍需使用者裝置實測；不宣稱未執行的線上／實機驗收通過。

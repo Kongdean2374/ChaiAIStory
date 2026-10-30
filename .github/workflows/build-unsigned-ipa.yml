@@ -32,9 +32,11 @@ jobs:
         run: |
           set -euo pipefail
           SIM_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for k,vs in d["devices"].items() if "iOS" in k for v in vs if "iPhone" in v["name"]))')
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; print(next(r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r["isAvailable"] and "iOS" in r["name"]))')
+          SE_ID=$(xcrun simctl create "ChaiAIStory SE" com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation "$RUNTIME")
           xcodebuild -project ChaiAIStory.xcodeproj -scheme ChaiAIStory \
-            -destination "platform=iOS Simulator,id=$SIM_ID" -derivedDataPath SimulatorData \
-            ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/ChaiAIStory-ui.log"
+            -destination "platform=iOS Simulator,id=$SIM_ID" -destination "platform=iOS Simulator,id=$SE_ID" -derivedDataPath SimulatorData \
+            ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO test 2>&1 | tee "$RUNNER_TEMP/ChaiAIStory-ui.log"
       - name: Compile native iPhone app without signing
         run: |
           set -o pipefail
