@@ -46,9 +46,11 @@ public enum ContextBuilder {
         }
         let rules = session.world.entities.filter { $0.kind == .rule }
         let scene = "\n主角內部狀態：\(try JSONCoding.encode(session.world.condition))\n主角認知：\(try JSONCoding.encode(Array(session.knowledge.suffix(80))))\n可見背包：\(try JSONCoding.encode(PlayerVisibleProjection(session).inventory))"
+        let hiddenInventory = Array(session.world.inventory.filter { !$0.knownToProtagonist }.prefix(60))
         let due = session.world.entities.filter { $0.kind == .npc && $0.nextMinute <= session.world.minute }.prefix(12)
         return header + "\n固定規則：\(try JSONCoding.encode(rules))" + scene
             + "\n需推演的NPC排程（不能直接公開）：\(try JSONCoding.encode(Array(due)))"
+            + "\n隱藏攜帶物（不可直接公開）：\(try JSONCoding.encode(hiddenInventory))"
             + "\n本局秘密（不可直接公開）：\(try JSONCoding.encode(session.world.hiddenFacts))"
             + "\n派生記憶（僅供參考，以已提交事實為準）：\(try JSONCoding.encode(memory))"
             + "\n近期正式回合：\(try JSONCoding.encode(recent))\n玩家本輪嘗試：\(action)"
@@ -61,7 +63,8 @@ public enum ContextBuilder {
         case "get_visible_inventory": return try JSONCoding.encode(PlayerVisibleProjection(session).inventory.prefix(80).map { $0 })
         case "get_world_facts_for_narrator":
             let entities = session.world.entities.filter { query.isEmpty || $0.id == query || $0.truth.localizedCaseInsensitiveContains(query) }
-            return try JSONCoding.encode(Array(entities.prefix(30)))
+            struct NarratorFacts: Encodable { let entities: [WorldEntity]; let inventory: [InventoryEntry]; let facts: [HiddenFact] }
+            return try JSONCoding.encode(NarratorFacts(entities: Array(entities.prefix(30)), inventory: Array(session.world.inventory.filter { query.isEmpty || $0.id == query || $0.name.localizedCaseInsensitiveContains(query) }.prefix(30)), facts: Array(session.world.hiddenFacts.filter { query.isEmpty || $0.id == query || $0.truth.localizedCaseInsensitiveContains(query) }.prefix(30))))
         case "get_npc_state": return try JSONCoding.encode(Array(session.world.entities.filter { [.npc, .goal, .relationship].contains($0.kind) && (query.isEmpty || $0.id == query || $0.truth.localizedCaseInsensitiveContains(query)) }.prefix(30)))
         case "get_quest_flags": return try JSONCoding.encode(Array(session.world.entities.filter { [.quest, .thread].contains($0.kind) }.prefix(40)))
         case "search_committed_history": return try JSONCoding.encode(Array(history.filter { $0.narrative.localizedCaseInsensitiveContains(query) || $0.action.localizedCaseInsensitiveContains(query) }.suffix(8)))

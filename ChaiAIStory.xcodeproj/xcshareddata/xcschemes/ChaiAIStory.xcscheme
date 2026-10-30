@@ -4,7 +4,7 @@
 <BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
 <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="34A04005BCAF206EEC990BD9" BuildableName="ChaiAIStory.app" BlueprintName="ChaiAIStory" ReferencedContainer="container:ChaiAIStory.xcodeproj"/>
 </BuildActionEntry></BuildActionEntries></BuildAction>
-<TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="YES"/>
+<TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="YES"><Testables><TestableReference skipped="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="16F90C2C0FEA799695F28B00" BuildableName="ChaiAIStoryUITests.xctest" BlueprintName="ChaiAIStoryUITests" ReferencedContainer="container:ChaiAIStory.xcodeproj"/></TestableReference></Testables></TestAction>
 <LaunchAction buildConfiguration="Debug" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" allowLocationSimulation="YES">
 <BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="34A04005BCAF206EEC990BD9" BuildableName="ChaiAIStory.app" BlueprintName="ChaiAIStory" ReferencedContainer="container:ChaiAIStory.xcodeproj"/></BuildableProductRunnable>
 </LaunchAction>

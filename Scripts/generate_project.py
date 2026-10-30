@@ -49,7 +49,21 @@ for name in ["Debug","Release"]:
     configs.append(add(name, "{isa = XCBuildConfiguration; name = "+name+"; buildSettings = {"+"".join(k+" = "+q(v)+";" for k,v in settings.items())+"}; }"))
 configlist = add("configlist", "{isa = XCConfigurationList; buildConfigurations = ("+",".join(configs)+"); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; }")
 target = add("target", "{isa = PBXNativeTarget; buildConfigurationList = "+configlist+"; buildPhases = ("+",".join([sources,frameworks,resources])+"); buildRules = (); dependencies = (); name = ChaiAIStory; packageProductDependencies = ("+dependency+"); productName = ChaiAIStory; productReference = "+product+"; productType = \"com.apple.product-type.application\"; }")
-root = add("project", "{isa = PBXProject; attributes = {LastUpgradeCheck = 1600; }; buildConfigurationList = "+configlist+"; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = \"zh-Hant\"; hasScannedForEncodings = 0; knownRegions = (\"zh-Hant\",en,Base); mainGroup = "+group+"; packageReferences = ("+package+"); productRefGroup = "+products+"; projectDirPath = \"\"; projectRoot = \"\"; targets = ("+target+"); }")
+uitestfile = add("uitestfile", '{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITests/ChaiAIStoryUITests.swift; sourceTree = SOURCE_ROOT; }')
+uitestbuild = add("uitestbuild", "{isa = PBXBuildFile; fileRef = "+uitestfile+"; }")
+uisources = add("uisources", "{isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ("+uitestbuild+"); runOnlyForDeploymentPostprocessing = 0; }")
+uiproduct = add("uiproduct", '{isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = ChaiAIStoryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; }')
+uiconfigs=[]
+for name in ["Debug", "Release"]:
+    settings = {"SWIFT_VERSION":"5.0", "IPHONEOS_DEPLOYMENT_TARGET":"17.0", "SDKROOT":"iphoneos", "PRODUCT_BUNDLE_IDENTIFIER":"com.kongdean.ChaiAIStory.UITests", "PRODUCT_NAME":"$(TARGET_NAME)", "TEST_TARGET_NAME":"ChaiAIStory", "GENERATE_INFOPLIST_FILE":"YES", "CODE_SIGNING_ALLOWED":"NO", "TARGETED_DEVICE_FAMILY":"1"}
+    uiconfigs.append(add("ui"+name, "{isa = XCBuildConfiguration; name = "+name+"; buildSettings = {"+"".join(k+" = "+q(v)+";" for k,v in settings.items())+"}; }"))
+uiconfiglist=add("uiconfiglist","{isa = XCConfigurationList; buildConfigurations = ("+",".join(uiconfigs)+"); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; }")
+proxy=add("uiproxy","{isa = PBXContainerItemProxy; containerPortal = "+oid("project")+"; proxyType = 1; remoteGlobalIDString = "+target+"; remoteInfo = ChaiAIStory; }")
+uidependency=add("uitargetdep","{isa = PBXTargetDependency; target = "+target+"; targetProxy = "+proxy+"; }")
+uitarget=add("uitarget", "{isa = PBXNativeTarget; buildConfigurationList = "+uiconfiglist+"; buildPhases = ("+uisources+"); buildRules = (); dependencies = ("+uidependency+"); name = ChaiAIStoryUITests; productName = ChaiAIStoryUITests; productReference = "+uiproduct+"; productType = "+q("com.apple.product-type.bundle.ui-testing")+"; }")
+objects[group]=objects[group].replace(products+");",products+","+uitestfile+");")
+objects[products]=objects[products].replace(product+");",product+","+uiproduct+");")
+root = add("project", "{isa = PBXProject; attributes = {LastUpgradeCheck = 1600; }; buildConfigurationList = "+configlist+"; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = \"zh-Hant\"; hasScannedForEncodings = 0; knownRegions = (\"zh-Hant\",en,Base); mainGroup = "+group+"; packageReferences = ("+package+"); productRefGroup = "+products+"; projectDirPath = \"\"; projectRoot = \"\"; targets = ("+target+","+uitarget+"); }")
 (project / "project.pbxproj").write_text("// !$*UTF8*$!\n{archiveVersion = 1; classes = {}; objectVersion = 56; objects = {\n"+"\n".join(k+" = "+v+";" for k,v in objects.items())+"\n}; rootObject = "+root+"; }\n")
 schemes = project / "xcshareddata/xcschemes"
 schemes.mkdir(parents=True, exist_ok=True)
@@ -59,7 +73,7 @@ schemes.mkdir(parents=True, exist_ok=True)
 <BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
 <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{target}" BuildableName="ChaiAIStory.app" BlueprintName="ChaiAIStory" ReferencedContainer="container:ChaiAIStory.xcodeproj"/>
 </BuildActionEntry></BuildActionEntries></BuildAction>
-<TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="YES"/>
+<TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="YES"><Testables><TestableReference skipped="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{uitarget}" BuildableName="ChaiAIStoryUITests.xctest" BlueprintName="ChaiAIStoryUITests" ReferencedContainer="container:ChaiAIStory.xcodeproj"/></TestableReference></Testables></TestAction>
 <LaunchAction buildConfiguration="Debug" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" allowLocationSimulation="YES">
 <BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{target}" BuildableName="ChaiAIStory.app" BlueprintName="ChaiAIStory" ReferencedContainer="container:ChaiAIStory.xcodeproj"/></BuildableProductRunnable>
 </LaunchAction>

@@ -50,7 +50,7 @@ public enum RuleValidator {
                       item.equippedSlot.isEmpty else { throw StoryError.invalid("新物品缺少有效取得來源或數量。") }
                 IDs.insert(item.id); result.world.inventory.append(item)
             case .adjust_item:
-                guard let index = result.world.inventory.firstIndex(where: { $0.id == change.targetID && $0.exists }), change.amount != 0, abs(change.amount) <= 100000 else { throw StoryError.invalid("無法變更不存在的物品。") }
+                guard let index = result.world.inventory.firstIndex(where: { $0.id == change.targetID && $0.exists }), change.amount != 0, change.amount >= -100000, change.amount <= 100000 else { throw StoryError.invalid("無法變更不存在的物品。") }
                 let count = result.world.inventory[index].quantity + change.amount
                 guard (0...100000).contains(count) else { throw StoryError.invalid("物品數量不足或超出上限。") }
                 result.world.inventory[index].quantity = count
@@ -72,7 +72,7 @@ public enum RuleValidator {
                       !condition.sensation.isEmpty, !condition.symptoms.isEmpty else { throw StoryError.invalid("身體狀態不合法。") }
                 result.world.condition = condition
             case .advance_time:
-                guard (0...525600).contains(change.amount) else { throw StoryError.invalid("時間不能倒流或無限制跳躍。") }
+                guard (0...525600).contains(change.amount), result.world.minute <= Int.max - change.amount else { throw StoryError.invalid("時間不能倒流或無限制跳躍。") }
                 result.world.minute += change.amount
             case .death: result.dead = true
             }

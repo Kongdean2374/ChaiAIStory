@@ -10,3 +10,5 @@ xcuserdata/
 *.ipa
 *.p12
 *.mobileprovision
+SimulatorData/
+__pycache__/

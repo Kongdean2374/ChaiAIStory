@@ -27,6 +27,14 @@ jobs:
           python3 Scripts/generate_project.py
           python3 Scripts/generate_icon.py
           git diff --exit-code -- ChaiAIStory.xcodeproj
+      - name: Native simulator UI acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIM_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for k,vs in d["devices"].items() if "iOS" in k for v in vs if "iPhone" in v["name"]))')
+          xcodebuild -project ChaiAIStory.xcodeproj -scheme ChaiAIStory \
+            -destination "platform=iOS Simulator,id=$SIM_ID" -derivedDataPath SimulatorData \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/ChaiAIStory-ui.log"
       - name: Compile native iPhone app without signing
         run: |
           set -o pipefail
@@ -47,7 +55,7 @@ jobs:
             echo "Unexpected signed application"
             exit 1
           fi
-          lipo -verify_arch arm64 "$APP/ChaiAIStory"
+          lipo "$APP/ChaiAIStory" -verify_arch arm64
           mkdir -p staging/Payload output
           cp -R "$APP" staging/Payload/
           (cd staging && /usr/bin/zip -qry ../output/ChaiAIStory-Unsigned.ipa Payload)

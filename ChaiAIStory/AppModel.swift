@@ -133,6 +133,7 @@ struct Preferences: Codable {
         var ledgerID = "\(attempt.id):0"
         var lastResponse: ResponseEnvelope?
         var success = false
+        var needsSync = false
         do {
             let recent = try store.turns(sessionID: base.id, limit: 12)
             let context = try ContextBuilder.context(session: base, recent: recent, memory: store.memory(sessionID: base.id), action: attempt.action, memoryOnly: attempt.memoryOnly)
@@ -163,8 +164,9 @@ struct Preferences: Codable {
                 if !response.calls.isEmpty {
                     guard !attempt.memoryOnly, round < 4 else { throw StoryError.invalid("查詢次數已達上限，本輪未儲存。") }
                     input += try OpenAIClient.assistantItems(response)
-                    let history = try store.allTurns(sessionID: base.id)
                     for call in response.calls {
+                        let parameters = (try? JSONSerialization.jsonObject(with: Data((call.arguments ?? "{}").utf8))) as? [String: String]
+                        let history = call.name == "search_committed_history" ? try store.searchHistory(sessionID: base.id, query: parameters?["query"] ?? "") : []
                         let answer = try ContextBuilder.query(name: call.name ?? "", arguments: call.arguments ?? "{}", session: base, history: history)
                         input.append(["type": "function_call_output", "call_id": call.call_id ?? "", "output": answer])
                     }
@@ -190,12 +192,16 @@ struct Preferences: Codable {
             if let response = lastResponse { try? record(response, attempt: attempt, ledgerID: ledgerID) }
             if let current = try? store.attempt(attempt.id), !current.phase.terminal { _ = try? store.transition(attempt.id, Date() > attempt.deadline ? .expired : .failed) }
             if background, let id = lastResponse?.id { try? await client.cancel(id) }
-            if !Task.isCancelled { report(error) }
+            if !Task.isCancelled {
+                report(error)
+                needsSync = preferences.syncOnConflict && !attempt.memoryOnly && !initial
+                    && ["不一致", "改寫", "衝突", "隱藏資訊"].contains(where: error.localizedDescription.contains)
+            }
         }
         guard currentID == attempt.id else { return }
         usage = (try? store.usage()) ?? usage
         busy = false; pendingAction = nil; phase = ""; currentID = nil; endBackgroundTask()
-        if success, let session, !session.dead, preferences.syncEvery > 0, session.lastCommittedTurn % preferences.syncEvery == 0 {
+        if let session, !session.dead, needsSync || (success && preferences.syncEvery > 0 && session.lastCommittedTurn % preferences.syncEvery == 0) {
             generate(action: "例行記憶核對", memoryOnly: true)
         }
     }

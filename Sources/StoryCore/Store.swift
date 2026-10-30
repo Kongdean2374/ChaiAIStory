@@ -85,7 +85,7 @@ public final class GameStore: @unchecked Sendable {
         guard try rows("SELECT 1 FROM tombstones WHERE session_id=?", [usage.sessionID.uuidString]).isEmpty else { return }
         try execute("INSERT OR REPLACE INTO usage VALUES(?,?,?)", [usage.id, usage.sessionID.uuidString, try JSONCoding.encode(usage)])
     } }
-    public func usage() throws -> [ApiUsage] { try synchronized { try rows("SELECT payload FROM usage ORDER BY rowid DESC LIMIT 1000").map { try JSONCoding.decode(ApiUsage.self, $0[0]) } } }
+    public func usage() throws -> [ApiUsage] { try synchronized { try rows("SELECT payload FROM usage ORDER BY rowid DESC").map { try JSONCoding.decode(ApiUsage.self, $0[0]) } } }
     public func commit(_ id: UUID, response: StoryTurnResponse, initial: GameSession? = nil) throws -> GameSession { try synchronized { try transaction {
         guard let attempt = try attempt(id), !attempt.memoryOnly, attempt.phase == .validating,
               attempt.deadline > Date(), try rows("SELECT 1 FROM tombstones WHERE session_id=?", [attempt.sessionID.uuidString]).isEmpty else { throw StoryError.stale }
@@ -98,6 +98,11 @@ public final class GameStore: @unchecked Sendable {
             try execute("UPDATE attempts SET phase=?,payload=? WHERE id=?", [cancelled.phase.rawValue, try JSONCoding.encode(cancelled), id.uuidString]); return original
         }
         // validating → committing → committed occurs entirely inside this transaction.
+        if persisted == nil {
+            guard [EntityKind.rule, .location, .npc].allSatisfy({ kind in next.world.entities.contains { $0.kind == kind } }), !next.knowledge.isEmpty else {
+                throw StoryError.invalid("開局缺少世界規則、地點、人物或可知情報，草稿已保留。")
+            }
+        }
         next.version += 1; next.lastCommittedTurn += 1
         let turn = CommittedTurn(id: id, sessionID: next.id, number: next.lastCommittedTurn, action: attempt.action, narrative: response.narrative.map(\.text).joined(separator: "\n\n"), choices: response.choices.map(\.text), summary: response.continuityNotes, changes: response.proposedChanges, date: Date())
         try execute("INSERT INTO turns VALUES(?,?,?,?)", [id.uuidString, next.id.uuidString, String(turn.number), try JSONCoding.encode(turn)])
@@ -110,6 +115,11 @@ public final class GameStore: @unchecked Sendable {
     } } }
     public func turns(sessionID: UUID, before: Int = Int.max, limit: Int = 40) throws -> [CommittedTurn] { try synchronized {
         try rows("SELECT payload FROM turns WHERE session_id=? AND number<? ORDER BY number DESC LIMIT ?", [sessionID.uuidString, String(before), String(max(1, min(limit, 100)))]).map { try JSONCoding.decode(CommittedTurn.self, $0[0]) }.reversed()
+    } }
+    public func searchHistory(sessionID: UUID, query: String) throws -> [CommittedTurn] { try synchronized {
+        guard query.count <= 200 else { throw StoryError.invalid("搜尋字數過長。") }
+        let escaped = query.replacingOccurrences(of: "!", with: "!!").replacingOccurrences(of: "%", with: "!%").replacingOccurrences(of: "_", with: "!_")
+        return try rows("SELECT payload FROM turns WHERE session_id=? AND payload LIKE ? ESCAPE '!' ORDER BY number DESC LIMIT 8", [sessionID.uuidString, "%" + escaped + "%"]).map { try JSONCoding.decode(CommittedTurn.self, $0[0]) }.reversed()
     } }
     public func allTurns(sessionID: UUID) throws -> [CommittedTurn] { try synchronized { try rows("SELECT payload FROM turns WHERE session_id=? ORDER BY number", [sessionID.uuidString]).map { try JSONCoding.decode(CommittedTurn.self, $0[0]) } } }
     public func saveMemory(_ memory: NarrativeMemory, attemptID: UUID) throws { try synchronized { try transaction {

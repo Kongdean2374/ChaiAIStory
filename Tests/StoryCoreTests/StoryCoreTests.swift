@@ -1,4 +1,5 @@
 import XCTest
+import CSQLite
 @testable import StoryCore
 
 final class StoryCoreTests: XCTestCase {
@@ -16,7 +17,14 @@ final class StoryCoreTests: XCTestCase {
     func opened(_ store: GameStore) throws -> GameSession {
         let base = GameSession(settings: CreationDraft())
         let attempt = try ready(store, base, initial: true)
-        return try store.commit(attempt.id, response: valid(), initial: base)
+        var opening = valid()
+        opening.proposedChanges = [
+            .init(operation: .add_entity, entity: .init(id: "rule", kind: .rule, truth: "寫實世界")),
+            .init(operation: .add_entity, entity: .init(id: "home", kind: .location, truth: "客棧")),
+            .init(operation: .add_entity, entity: .init(id: "npc", kind: .npc, truth: "掌櫃", motivation: "經營客棧"))
+        ]
+        opening.knowledgeReveals = [.init(id: "k-home", subjectID: "home", title: "客棧", text: "你在客棧裡。", source: "親眼所見")]
+        return try store.commit(attempt.id, response: opening, initial: base)
     }
     func testDraftIsNotSession() throws {
         let db = try store(); var draft = CreationDraft(); draft.genre = "科幻"; draft.name = "星塵"
@@ -226,4 +234,32 @@ final class StoryCoreTests: XCTestCase {
         inspect(ResponseSchemas.story); inspect(ResponseSchemas.memory); inspect(ResponseSchemas.tools)
         XCTAssertNoThrow(try JSONSerialization.data(withJSONObject: ResponseSchemas.story))
     }
+    func testSQLFailureAfterTurnInsertRollsBackEverything() throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).path
+        defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path+suffix) } }
+        let db = try GameStore(path: path); let base = try opened(db)
+        let attempt = try ready(db, base)
+        var connection: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(path, &connection), SQLITE_OK)
+        defer { sqlite3_close(connection) }
+        XCTAssertEqual(sqlite3_exec(connection, "CREATE TRIGGER simulated_disk_failure BEFORE INSERT ON session BEGIN SELECT RAISE(ABORT, 'injected failure'); END", nil, nil, nil), SQLITE_OK)
+        XCTAssertThrowsError(try db.commit(attempt.id, response: valid()))
+        XCTAssertEqual(try db.session(), base)
+        XCTAssertEqual(try db.allTurns(sessionID: base.id).count, 1)
+        XCTAssertEqual(try db.attempt(attempt.id)?.phase, .validating)
+    }
+    func testExtremeUntrustedAmountDoesNotCrash() {
+        var base = GameSession(settings: CreationDraft())
+        base.world.inventory = [InventoryEntry(id: "item", name: "物品")]
+        var response = valid()
+        response.proposedChanges = [.init(operation: .adjust_item, targetID: "item", amount: Int.min)]
+        XCTAssertThrowsError(try RuleValidator.apply(response, to: base))
+    }
+    func testIncompleteOpeningKeepsDraft() throws {
+        let db = try store(); var draft = CreationDraft(); draft.name = "草稿人物"; try db.saveDraft(draft)
+        let base = GameSession(settings: draft); let attempt = try ready(db, base, initial: true)
+        XCTAssertThrowsError(try db.commit(attempt.id, response: valid(), initial: base))
+        XCTAssertNil(try db.session()); XCTAssertEqual(try db.draft(), draft)
+    }
+
 }
